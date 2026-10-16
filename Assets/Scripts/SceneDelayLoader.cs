@@ -1,43 +1,73 @@
 using System.Collections;
+using TMPro;
 using UnityEngine;
 using UnityEngine.SceneManagement;
-using TMPro;
 
 public class SceneDelayLoader : MonoBehaviour
 {
-    [Header("Настройки UI")]
-    [SerializeField] private TextMeshProUGUI timerText; 
-    [SerializeField] private string textPrefix = "До начала: "; 
+    [Header("Loading UI")]
+    [SerializeField] private TextMeshProUGUI timerText;
+    [SerializeField] private string textPrefix = "Р—Р°РіСЂСѓР·РєР° СѓСЂРѕРІРЅСЏ С‡РµСЂРµР·: ";
 
-    [Header("Настройки таймера")]
+    [Header("Loading settings")]
     [SerializeField] private float delayBeforeLoad = 10f;
 
-    private void Start()
+    private const string LoadingSceneName = "Load Scene";
+    private static string selectedLevelScene = "Arama";
+
+    /// <summary>
+    /// Call this from a level-selection button to remember the chosen level
+    /// and open the shared loading screen.
+    /// Example: SceneDelayLoader.LoadSelectedScene("Arama");
+    /// </summary>
+    public static void LoadSelectedScene(string sceneName)
     {
-        if (timerText == null)
+        if (string.IsNullOrWhiteSpace(sceneName))
         {
-            Debug.LogError("Пожалуйста, перетащите объект текста в поле Timer Text в Инспекторе!");
+            Debug.LogError("SceneDelayLoader: selected scene name is empty.");
             return;
         }
 
-        StartCoroutine(LoadSceneWithCountdown());
+        selectedLevelScene = sceneName;
+        SceneManager.LoadScene(LoadingSceneName);
     }
 
-    private IEnumerator LoadSceneWithCountdown()
+    private void Start()
     {
-        float timeRemaining = delayBeforeLoad;
+        StartCoroutine(LoadSceneAfterDelay());
+    }
 
-        while (timeRemaining > 0)
+    private IEnumerator LoadSceneAfterDelay()
+    {
+        float timeRemaining = Mathf.Max(0f, delayBeforeLoad);
+
+        while (timeRemaining > 0f)
         {
-            timerText.text = textPrefix + Mathf.CeilToInt(timeRemaining).ToString();
+            if (timerText != null)
+            {
+                timerText.text = textPrefix + Mathf.CeilToInt(timeRemaining);
+            }
 
             yield return new WaitForSeconds(1f);
-
             timeRemaining -= 1f;
         }
 
-        timerText.text = "Загрузка...";
+        if (timerText != null)
+        {
+            timerText.text = "Р—Р°РіСЂСѓР·РєР°...";
+        }
 
-        SceneManager.LoadScene("Map");
+        if (!Application.CanStreamedLevelBeLoaded(selectedLevelScene))
+        {
+            Debug.LogError($"SceneDelayLoader: scene '{selectedLevelScene}' is not available in Build Settings.");
+            if (timerText != null)
+            {
+                timerText.text = "РќРµ СѓРґР°Р»РѕСЃСЊ Р·Р°РіСЂСѓР·РёС‚СЊ СѓСЂРѕРІРµРЅСЊ";
+            }
+
+            yield break;
+        }
+
+        SceneManager.LoadScene(selectedLevelScene);
     }
 }
